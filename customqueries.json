@@ -397,6 +397,33 @@
             ]
         },
 		{
+            "name": "Find special ACLs Computer -> User - All",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:Computer) - [r:ForceChangePassword|AddMembers|GenericAll|GenericWrite|AllExtendedRights|Owns|WriteDacl|WriteOwner|ReadLAPSPassword|ReadGMSAPassword] -> (n:User) RETURN p"
+                }
+            ]
+        },
+		{
+            "name": "Find special ACLs Computer -> Groups - All",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:Computer) - [r:ForceChangePassword|AddMembers|GenericAll|GenericWrite|AllExtendedRights|Owns|WriteDacl|WriteOwner|ReadLAPSPassword|ReadGMSAPassword] -> (g:Group) RETURN p"
+                }
+            ]
+        },
+		{
+            "name": "Find special ACLs Computer -> Computer - All",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:Computer) - [r:ForceChangePassword|AddMembers|GenericAll|GenericWrite|AllExtendedRights|Owns|WriteDacl|WriteOwner|ReadLAPSPassword|ReadGMSAPassword] -> (g:Computer) RETURN p"
+                }
+            ]
+        },
+		{
             "name": "Find all connection possibilities Group -> Computer",
             "queryList": [
                 {
