@@ -1,0 +1,409 @@
+{
+    "queries": [
+        {
+            "name": "List all owned users",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (m:User) WHERE m.owned=TRUE RETURN m"
+                }
+            ]
+        },
+        {
+            "name": "List all owned computers",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (m:Computer) WHERE m.owned=TRUE RETURN m"
+                }
+            ]
+        },
+        {
+            "name": "List all owned groups",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (m:Group) WHERE m.owned=TRUE RETURN m"
+                }
+            ]
+        },
+        {
+            "name": "List all High Valued Targets",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (m) WHERE m.highvalue=TRUE RETURN m"
+                }
+            ]
+        },
+        {
+            "name": "List the groups of all owned users",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (m:User) WHERE m.owned=TRUE WITH m MATCH p=(m)-[:MemberOf*1..]->(n:Group) RETURN p"
+                }
+            ]
+        },
+        {
+
+            "name": "Find all Kerberoastable Users",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (n:User)WHERE n.hasspn=true RETURN n",
+                    "allowCollapse": false
+                }
+            ]
+        },
+        {
+            "name": "Find Kerberoastable Users with a path to DA",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (u:User {hasspn:true}) MATCH (g:Group) WHERE g.objectid ENDS WITH '-512' MATCH p = shortestPath( (u)-[*1..]->(g) ) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find machines Domain Users can RDP into",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "match p=(g:Group)-[:CanRDP]->(c:Computer) where g.objectid ENDS WITH '-513' return p"
+                }
+            ]
+        },
+        {
+            "name": "Find what groups can RDP",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(m:Group)-[r:CanRDP]->(n:Computer) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find groups that can reset passwords",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(m:Group)-[r:ForceChangePassword]->(n:User) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find groups that have admin rights",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(m:Group)-[r:AdminTo]->(n:Computer) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find all users that have admin rights",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(m:User)-[r:AdminTo]->(n:Computer) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find all active Domain Admin sessions",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (n:User)-[:MemberOf]->(g:Group) WHERE g.objectid ENDS WITH '-512' MATCH p = (c:Computer)-[:HasSession]->(n) return p"
+                }
+            ]
+        },
+        {
+            "name": "Find all computers with Unconstrained Delegation",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (c:Computer {unconstraineddelegation:true}) return c"
+                }
+            ]
+        },
+        {
+            "name": "Find all computers with unsupported operating systems",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (H:Computer) WHERE H.operatingsystem =~ '.*(2000|2003|2008|xp|vista|7|me).*' RETURN H"
+                }
+            ]
+        },  
+        {
+            "name": "Find constrained delegation",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:User)-[:AllowedToDelegate]->(c:Computer) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find computers that allow unconstrained delegation that ARE NOT domain controllers.",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (c1:Computer)-[:MemberOf*1..]->(g:Group) WHERE g.objectid ENDS WITH '-516' WITH COLLECT(c1.name) AS domainControllers MATCH (c2:Computer {unconstraineddelegation:true}) WHERE NOT c2.name IN domainControllers RETURN c2"
+                }
+            ]
+        },
+        {
+            "name": " Return the name of every computer in the database where at least one SPN for the computer contains the string 'MSSQL'",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (c:Computer) WHERE ANY (x IN c.serviceprincipalnames WHERE toUpper(x) CONTAINS 'MSSQL') RETURN c"
+                }
+            ]
+        },
+        {
+            "name": "View all GPOs",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "Match (n:GPO) RETURN n"
+                }
+            ]
+        },
+        {
+            "name": "View all groups that contain the word 'admin'",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "Match (n:Group) WHERE n.name CONTAINS 'ADMIN' RETURN n"
+                }
+            ]
+        },
+        {
+            "name": "Find users that can be AS-REP roasted",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (u:User {dontreqpreauth: true}) RETURN u"
+                }
+            ]
+        },
+        {
+            "name": "Show all high value target's groups",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(n:User)-[r:MemberOf*1..]->(m:Group {highvalue:true}) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find groups that contain both users and computers",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (c:Computer)-[r:MemberOf*1..]->(groupsWithComps:Group) WITH groupsWithComps MATCH (u:User)-[r:MemberOf*1..]->(groupsWithComps) RETURN DISTINCT(groupsWithComps) as groupsWithCompsAndUsers"
+                }
+            ]
+        },
+        {
+            "name": "Find Kerberoastable users who are members of high value groups",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (u:User)-[r:MemberOf*1..]->(g:Group) WHERE g.highvalue=true AND u.hasspn=true RETURN u"
+                }
+            ]
+        },
+        {
+            "name": "Find Kerberoastable users and where they are AdminTo",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "OPTIONAL MATCH (u1:User) WHERE u1.hasspn=true OPTIONAL MATCH (u1)-[r:AdminTo]->(c:Computer) RETURN u1"
+                }
+            ]
+        },
+        {
+            "name": "Find computers with constrained delegation permissions and the corresponding targets where they allowed to delegate",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (c:Computer) WHERE c.allowedtodelegate IS NOT NULL RETURN c"
+                }
+            ]
+        },
+        {
+            "name": "Find if any domain user has interesting permissions against a GPO (Warning: Heavy)",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:User)-[r:AllExtendedRights|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|GpLink*1..]->(g:GPO) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find if unprivileged users have rights to add members into groups",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH (n:User {admincount:False}) MATCH p=allShortestPaths((n)-[r:AddMember*1..]->(m:Group)) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find an object in one domain that can do something to a foreign object",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(n)-[r]->(m) WHERE NOT n.domain = m.domain RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find all sessions a user in a specific domain has",
+            "requireNodeSelect": true,
+            "queryList": [
+                {
+                    "final": false,
+                    "title": "Select source domain...",
+                    "query": "MATCH (n:Domain) RETURN n.name ORDER BY n.name"
+                },
+                {
+                    "final": true,
+                    "query": "MATCH p=(m:Computer)-[r:HasSession]->(n:User {domain:{result}}) RETURN p",
+                    "startNode": "{}",
+                    "allowCollapse": false
+                }
+            ]
+        },
+        {
+            "name": "Find an object from domain 'A' that can do anything to a foreign object",
+            "requireNodeSelect": true,
+            "queryList": [
+                {
+                    "final": false,
+                    "title": "Select source domain...",
+                    "query": "MATCH (n:Domain) RETURN n.name ORDER BY n.name"
+                },
+                {
+                    "final": true,
+                    "query": "MATCH p=(n {domain:{result}})-[r]->(d) WHERE NOT d.domain=n.domain RETURN p",
+                    "startNode": "{}",
+                    "allowCollapse": false
+                }
+            ]
+        },
+        {
+            "name": "Find special ACLs User -> User - All",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:User) - [r:ForceChangePassword|AddMembers|GenericAll|GenericWrite|AllExtendedRights|Owns|WriteDacl|WriteOwner|ReadLAPSPassword|ReadGMSAPassword] -> (n:User) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find special ACLs User -> Groups - All",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:User) - [r:ForceChangePassword|AddMembers|GenericAll|GenericWrite|AllExtendedRights|Owns|WriteDacl|WriteOwner|ReadLAPSPassword|ReadGMSAPassword] -> (g:Group) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find special ACLs User -> Computer - All",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:User) - [r:ForceChangePassword|AddMembers|GenericAll|GenericWrite|AllExtendedRights|Owns|WriteDacl|WriteOwner|ReadLAPSPassword|ReadGMSAPassword] -> (g:Computer) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find special ACLs Group -> User - All",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:Group) - [r:ForceChangePassword|AddMembers|GenericAll|GenericWrite|AllExtendedRights|Owns|WriteDacl|WriteOwner|ReadLAPSPassword|ReadGMSAPassword] -> (n:User) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find special ACLs Group -> Groups - All",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:Group) - [r:ForceChangePassword|AddMembers|GenericAll|GenericWrite|AllExtendedRights|Owns|WriteDacl|WriteOwner|ReadLAPSPassword|ReadGMSAPassword] -> (g:Group) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find special ACLs Group -> Computer - All",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:Group) - [r:ForceChangePassword|AddMembers|GenericAll|GenericWrite|AllExtendedRights|Owns|WriteDacl|WriteOwner|ReadLAPSPassword|ReadGMSAPassword] -> (g:Computer) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find special ACLs Computer -> User - All",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:Computer) - [r:ForceChangePassword|AddMembers|GenericAll|GenericWrite|AllExtendedRights|Owns|WriteDacl|WriteOwner|ReadLAPSPassword|ReadGMSAPassword] -> (n:User) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find special ACLs Computer -> Groups - All",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:Computer) - [r:ForceChangePassword|AddMembers|GenericAll|GenericWrite|AllExtendedRights|Owns|WriteDacl|WriteOwner|ReadLAPSPassword|ReadGMSAPassword] -> (g:Group) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find special ACLs Computer -> Computer - All",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:Computer) - [r:ForceChangePassword|AddMembers|GenericAll|GenericWrite|AllExtendedRights|Owns|WriteDacl|WriteOwner|ReadLAPSPassword|ReadGMSAPassword] -> (g:Computer) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find all connection possibilities Group -> Computer",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(g:Group) - [r:CanRDP|CanPSRemote|ExecuteDCOM|AllowedToDelegate|AllowedToAct|AllowedToAct|SQLAdmin|HasSIDHistory] -> (n:Computer) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find all connection possibilities User -> Computer",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:User) - [r:CanRDP|CanPSRemote|ExecuteDCOM|AllowedToDelegate|AllowedToAct|AllowedToAct|SQLAdmin|HasSIDHistory] -> (n:Computer) RETURN p"
+                }
+            ]
+        },
+        {
+            "name": "Find all connection possibilities Computer -> Computer",
+            "queryList": [
+                {
+                    "final": true,
+                    "query": "MATCH p=(u:Computer) - [r:CanRDP|CanPSRemote|ExecuteDCOM|AllowedToDelegate|AllowedToAct|AllowedToAct|SQLAdmin|HasSIDHistory] -> (n:Computer) RETURN p"
+                }
+            ]
+        }
+    ]
+}
