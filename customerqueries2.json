@@ -237,7 +237,7 @@
             ]
         },
         {
-            "name": "Find if any domain user has interesting permissions against a GPO (Warning: Heavy)",
+            "name": "Find if any domain user has interesting permissions against a GPO",
             "queryList": [
                 {
                     "final": true,
@@ -264,23 +264,6 @@
             ]
         },
         {
-            "name": "Find all sessions a user in a specific domain has",
-            "requireNodeSelect": true,
-            "queryList": [
-                {
-                    "final": false,
-                    "title": "Select source domain...",
-                    "query": "MATCH (n:Domain) RETURN n.name ORDER BY n.name"
-                },
-                {
-                    "final": true,
-                    "query": "MATCH p=(m:Computer)-[r:HasSession]->(n:User {domain:{result}}) RETURN p",
-                    "startNode": "{}",
-                    "allowCollapse": false
-                }
-            ]
-        },
-        {
             "name": "Find an object from domain 'A' that can do anything to a foreign object",
             "requireNodeSelect": true,
             "queryList": [
@@ -291,7 +274,7 @@
                 },
                 {
                     "final": true,
-                    "query": "MATCH p=(n {domain:{result}})-[r]->(d) WHERE NOT d.domain=n.domain RETURN p",
+                    "query": "MATCH p=(n {domain:$result})-[r]->(d) WHERE NOT d.domain=n.domain RETURN p",
                     "startNode": "{}",
                     "allowCollapse": false
                 }
