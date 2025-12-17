@@ -1,0 +1,585 @@
+// List all Domains
+MATCH (d:Domain)
+RETURN d
+
+// List Domains with Machine Account Quota > 0
+MATCH (d:Domain)
+WHERE toInteger(d.machineaccountquota) > 0
+RETURN d
+
+// List Domain Controllers
+MATCH p = (:Domain)-[:Contains*1..]->(:Computer)
+WHERE c.isdc = true
+RETURN p
+
+// List all owned USERS
+MATCH (m:User)
+WHERE m.owned = TRUE
+RETURN m
+
+// List all owned COMPUTERS
+MATCH (m:Computer)
+WHERE m.owned = TRUE
+RETURN m
+
+// List all owned GROUPS
+MATCH (m:Group)
+WHERE m.owned = TRUE
+RETURN m
+
+// List all high valued Targets
+MATCH (m)
+WHERE m.highvalue = TRUE
+RETURN m
+
+// List the GROUPS of all owned USERS
+MATCH p = (m:User)-[:MemberOf*1..]->(n:Group)
+WHERE m.owned = TRUE
+RETURN p
+
+// Find Interesting Objects by Keywords
+MATCH p = (:Domain)-[:Contains*1..]->(b:Base)
+WHERE toLower(b.name) CONTAINS 'admin'
+   OR toLower(b.name) CONTAINS 'empfindlich'
+   OR toLower(b.name) CONTAINS 'geheim'
+   OR toLower(b.name) CONTAINS 'important'
+   OR toLower(b.name) CONTAINS 'azure'
+   OR toLower(b.name) CONTAINS 'msol'
+   OR toLower(b.name) CONTAINS 'kennwort'
+   OR toLower(b.name) CONTAINS 'pass'
+   OR toLower(b.name) CONTAINS 'secret'
+   OR toLower(b.name) CONTAINS 'sensib'
+   OR toLower(b.name) CONTAINS 'sensitiv'
+   OR toLower(b.name) CONTAINS 'wichtig'
+   OR toLower(b.name) CONTAINS 'backdoor'
+   OR toLower(b.name) CONTAINS 'honey'
+   OR toLower(b.description) CONTAINS 'admin'
+   OR toLower(b.description) CONTAINS 'empfindlich'
+   OR toLower(b.description) CONTAINS 'geheim'
+   OR toLower(b.description) CONTAINS 'important'
+   OR toLower(b.description) CONTAINS 'azure'
+   OR toLower(b.description) CONTAINS 'msol'
+   OR toLower(b.description) CONTAINS 'kennwort'
+   OR toLower(b.description) CONTAINS 'pass'
+   OR toLower(b.description) CONTAINS 'secret'
+   OR toLower(b.description) CONTAINS 'sensib'
+   OR toLower(b.description) CONTAINS 'sensitiv'
+   OR toLower(b.description) CONTAINS 'wichtig'
+   OR toLower(b.description) CONTAINS 'backdoor'
+   OR toLower(b.description) CONTAINS 'honey'
+RETURN p
+
+// Find Users with Password in Description
+MATCH p = (:Domain)-[:Contains*1..]->(u:User)
+WHERE toLower(u.description) CONTAINS 'pass'
+   OR toLower(u.description) CONTAINS 'pwd'
+   OR toLower(u.description) CONTAINS 'kenn'
+   OR toLower(u.description) CONTAINS 'login'
+   OR toLower(u.description) CONTAINS 'cred'
+RETURN p
+
+// Find Users with Password Stored in Cleartext Password Fields
+MATCH p = (:Domain)-[:Contains*1..]->(u:User)
+WHERE u.userpassword <> ''
+   OR u.unixpassword <> ''
+   OR u.sfupassword <> ''
+   OR u.unicodepassword <> ''
+RETURN p
+
+// Find Users with Password Stored Using Reversible Encryption
+MATCH p = (:Domain)-[:Contains*1..]->(:Base)
+WHERE b.encryptedtextpwdallowed = true
+RETURN p
+
+// Find Users with Password Not Required
+MATCH p = (:Domain)-[:Contains*1..]->(:Base)
+WHERE b.passwordnotreqd = true
+RETURN p
+
+// Find Users with Password Never Expires
+MATCH p = (:Domain)-[:Contains*1..]->(:Base)
+WHERE b.pwdneverexpires = true
+RETURN p
+
+// Find Users with Same Name in Other Domain
+MATCH p = (:Domain)-[:Contains*1..]->(u1:User), (u2:User)
+WHERE u1.samaccountname = u2.samaccountname
+  AND u1.domain <> u2.domain
+RETURN p
+
+// Find All Sessions of All Users
+MATCH p = (:Computer)-[:HasSession*1..]->(:User)
+RETURN p
+
+// Find Tier 0 Objects
+MATCH p = (:Domain)-[:Contains*1..]->(n:Base)
+WHERE 'admin_tier_0' IN split(n.system_tags, ' ')
+RETURN p
+
+// Find Tier 0 Users
+MATCH p = (u:User)-[:MemberOf]->(:Base)
+WHERE 'admin_tier_0' IN split(u.system_tags, ' ')
+RETURN p
+
+// Find Tier 0 Computers
+MATCH p = (c:Computer)-[:MemberOf]->(:Base)
+WHERE 'admin_tier_0' IN split(c.system_tags, ' ')
+RETURN p
+
+// Find Users in Protected Users Group
+MATCH p = (:Base)-[:MemberOf*1..]->(:Group)
+WHERE g.samaccountname = 'Protected Users'
+RETURN p
+
+// Find Users which Cannot be Delegated
+MATCH p = (:Base)-[:MemberOf*1..]->(:Group)
+WHERE b.sensitive = true
+RETURN p
+
+// Find AdminTo Edges
+MATCH p = (u)-[:AdminTo]->(:Computer)
+RETURN p
+
+// Find Tier 0 Users Logins on Non-Tier 0
+MATCH p = (c:Computer)-[:HasSession*1..]->(u:User)
+WHERE 'admin_tier_0' IN split(u.system_tags, ' ')
+  AND (NOT 'admin_tier_0' IN split(c.system_tags, ' ') OR c.system_tags IS NULL)
+RETURN p
+
+// Find Non-Tier 0 Administrators
+MATCH p = (b:Base)-[:AdminTo]->(:Computer)
+WHERE NOT 'admin_tier_0' IN split(b.system_tags, ' ')
+   OR b.system_tags IS NULL
+RETURN p
+
+// Find Non-Tier 0 DCSync Accounts
+MATCH p = allShortestPaths((b:Base)-[:MemberOf|GenericAll|AllExtendedRights|DCSync*1..]->(d:Domain))
+WHERE b <> d
+  AND (NOT 'admin_tier_0' IN split(b.system_tags, ' ') OR b.system_tags IS NULL)
+RETURN p
+
+// Find Non-Tier 0 LAPS Read
+MATCH p = (b:Base)-[:AllExtendedRights|ReadLAPSPassword]->(:Computer)
+WHERE NOT 'admin_tier_0' IN split(b.system_tags, ' ')
+   OR b.system_tags IS NULL
+RETURN p
+
+// Find Non-Tier 0 RDP Access
+MATCH p = (b:Base)-[:CanRDP]->(:Computer)
+WHERE NOT 'admin_tier_0' IN split(b.system_tags, ' ')
+   OR b.system_tags IS NULL
+RETURN p
+
+// Find Computer without LAPS
+MATCH p = (:Domain)-[:Contains*1..]->(:Base)
+WHERE b.haslaps = false
+  AND b.isdc = false
+RETURN p
+
+// Find Computer in Tier 0 Groups
+MATCH p = (:Computer)-[:MemberOf*1..]->(g:Group)
+WHERE c.isdc = false
+  AND 'admin_tier_0' IN split(g.system_tags, ' ')
+RETURN p
+
+// Find Computers Admin to Computers (direct)
+MATCH p = (:Computer)-[:MemberOf|HasSIDHistory*0..]->(g)-[:AdminTo]->(:Computer)
+RETURN p
+
+// Find Computers Admin to Computers (indirect)
+MATCH p = (:Computer)-[:MemberOf*1..]->(:Base)-[:AdminTo*1..]->(:Computer)
+RETURN p
+
+// Find Kerberoastable Users (Accounts with SPN Set)
+MATCH p = (:Domain)-[:Contains*1..]->(b:Base)
+WHERE b.hasspn = true
+  AND b.samaccountname <> 'krbtgt'
+RETURN p
+
+// Find Kerberoastable Users in Tier 0 Groups
+MATCH p = shortestPath((:User)-[:MemberOf*1..]->(g:Group))
+WHERE u.hasspn = true
+  AND 'admin_tier_0' IN split(g.system_tags, ' ')
+RETURN p
+
+// Find Shortest Paths from Kerberoastable Users
+MATCH p = allShortestPaths((u:User)-[*1..]->(n))
+WHERE u.hasspn = true
+  AND u <> n
+RETURN p
+
+// Find AS-REP Roastable Users (DontReqPreAuth)
+MATCH p = (:Domain)-[:Contains*1..]->(:Base)
+WHERE b.dontreqpreauth = true
+RETURN p
+
+// Find if unprivileged USERS have rights to add members into GROUPS
+MATCH p = allShortestPaths((n:User)-[r:AddMember*1..]->(m:Group))
+WHERE n.admincount = False
+RETURN p
+
+// Find COMPUTER where SPN contains 'SQL'
+MATCH (c:Computer)
+WHERE ANY (x IN c.serviceprincipalnames WHERE toUpper(x) CONTAINS 'SQL')
+RETURN c
+
+// Find COMPUTER where SPN contains 'DC'
+MATCH (c:Computer)
+WHERE ANY (x IN c.serviceprincipalnames WHERE toUpper(x) CONTAINS 'DC')
+RETURN c
+
+// List all GROUPS that contain the word 'admin'
+MATCH (n:Group)
+WHERE n.name CONTAINS 'ADMIN'
+RETURN n
+
+// View all high value target's GROUPS
+MATCH p = (n:User)-[r:MemberOf*1..]->(m:Group)
+WHERE m.highvalue = true
+RETURN p
+
+// Find GROUPS that contain both USERS and COMPUTERS
+MATCH (c:Computer)-[r:MemberOf*1..]->(groupsWithComps:Group)
+WITH groupsWithComps
+MATCH (u:User)-[r:MemberOf*1..]->(groupsWithComps)
+RETURN DISTINCT(groupsWithComps) as groupsWithCompsAndUsers
+
+// View all GPOs
+MATCH (n:GPO)
+RETURN n
+
+// Find Interesting GPOs by Keyword
+MATCH p = (g:GPO)-[:GPLink*1..]->(:Base)
+WHERE toLower(g.name) CONTAINS '360totalsecurity'
+   OR toLower(g.name) CONTAINS 'access'
+   OR toLower(g.name) CONTAINS 'acronis'
+   OR toLower(g.name) CONTAINS 'admin'
+   OR toLower(g.name) CONTAINS 'antivirus'
+   OR toLower(g.name) CONTAINS 'av'
+   OR toLower(g.name) CONTAINS 'defender'
+   OR toLower(g.name) CONTAINS 'firewall'
+   OR toLower(g.name) CONTAINS 'laps'
+   OR toLower(g.name) CONTAINS 'pass'
+   OR toLower(g.name) CONTAINS 'powershell'
+   OR toLower(g.name) CONTAINS 'rdp'
+   OR toLower(g.name) CONTAINS 'script'
+   OR toLower(g.name) CONTAINS 'security'
+   OR toLower(g.name) CONTAINS 'uac'
+   OR toLower(g.name) CONTAINS 'vpn'
+   OR toLower(g.name) CONTAINS 'winrm'
+RETURN p
+
+// Find if any domain USER has permissions against a GPO
+MATCH p = (u:User)-[r:MemberOf|HasSession|AdminTo|AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|CanRDP|ExecuteDCOM|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|SQLAdmin|ReadGMSAPassword|HasSIDHistory|CanPSRemote*1..]->(g:GPO)
+RETURN p
+
+// Find if any domain COMPUTER has permissions against a GPO
+MATCH p = (c:Computer)-[r:MemberOf|HasSession|AdminTo|AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|CanRDP|ExecuteDCOM|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|SQLAdmin|ReadGMSAPassword|HasSIDHistory|CanPSRemote*1..]->(g:GPO)
+RETURN p
+
+// Find GPO Permissions of Non-Admin Principals
+MATCH p = (u:User)-[:AddMember|AddSelf|WriteSPN|AddKeyCredentialLink|AllExtendedRights|ForceChangePassword|GenericAll|GenericWrite|WriteDacl|WriteOwner|Owns]->(:GPO)
+WHERE NOT 'admin_tier_0' IN split(u.system_tags, ' ')
+   OR u.system_tags IS NULL
+RETURN p
+
+// Find all computers with UNCONSTRAINED DELEGATION
+MATCH (c:Computer)
+WHERE c.unconstraineddelegation = true
+RETURN c
+
+// Find CONSTRAINED DELEGATION
+MATCH p = (u:User)-[:AllowedToDelegate]->(c:Computer)
+RETURN p
+
+// Find COMPUTERS with CONSTRAINED DELEGATION permissions
+MATCH (c:Computer)
+WHERE c.allowedtodelegate IS NOT NULL
+RETURN c
+
+// Find OBJECT in one domain with rights to foreign OBJECT
+MATCH p = (n)-[r]->(m)
+WHERE NOT n.domain = m.domain
+RETURN p
+
+// Find special ACLs User -> User
+MATCH p = (u:User)-[r:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|ReadGMSAPassword|HasSIDHistory]->(n:User)
+RETURN p
+
+// Find special ACLs User -> Groups
+MATCH p = (u:User)-[r:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|ReadGMSAPassword|HasSIDHistory]->(g:Group)
+RETURN p
+
+// Find special ACLs User -> Computer
+MATCH p = (u:User)-[r:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|ReadGMSAPassword|HasSIDHistory]->(g:Computer)
+RETURN p
+
+// Find special ACLs Group -> User
+MATCH p = (u:Group)-[r:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|ReadGMSAPassword|HasSIDHistory]->(n:User)
+RETURN p
+
+// Find special ACLs Group -> Groups
+MATCH p = (u:Group)-[r:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|ReadGMSAPassword|HasSIDHistory]->(g:Group)
+RETURN p
+
+// Find special ACLs Group -> Computer
+MATCH p = (u:Group)-[r:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|ReadGMSAPassword|HasSIDHistory]->(g:Computer)
+RETURN p
+
+// Find special ACLs Computer -> User
+MATCH p = (u:Computer)-[r:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|ReadGMSAPassword|HasSIDHistory]->(n:User)
+RETURN p
+
+// Find special ACLs Computer -> Groups
+MATCH p = (u:Computer)-[r:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|ReadGMSAPassword|HasSIDHistory]->(g:Group)
+RETURN p
+
+// Find special ACLs Computer -> Computer
+MATCH p = (u:Computer)-[r:AllExtendedRights|AddMember|ForceChangePassword|GenericAll|GenericWrite|Owns|WriteDacl|WriteOwner|AllowedToDelegate|ReadLAPSPassword|Contains|GpLink|AddAllowedToAct|AllowedToAct|ReadGMSAPassword|HasSIDHistory]->(g:Computer)
+RETURN p
+
+// Find LAPS Passwords Readable by Non-Admin
+MATCH p = (b:Base)-[:AllExtendedRights|ReadLAPSPassword|GenericAll]->(:Computer)
+WHERE c.haslaps = true
+  AND (NOT 'admin_tier_0' IN split(b.system_tags, ' ') OR b.system_tags IS NULL)
+RETURN p
+
+// Find LAPS Passwords Readable by Owned Principals
+MATCH p = (u)-[:MemberOf*1..]->(:Group)-[:GenericAll]->(t:Computer)
+WHERE t.haslaps = true
+  AND 'owned' IN split(u.system_tags, ' ')
+RETURN p
+
+// Find ACLs to Computers (excluding High Value Targets)
+MATCH p = (b)-[r]->(c:Computer)
+WHERE r.isacl = true
+  AND (b:User OR b:Computer OR b:Group)
+  AND (NOT 'admin_tier_0' IN split(b.system_tags, ' ') OR b.system_tags IS NULL)
+RETURN p
+
+// Find Group Delegated Outbound Object Control from Owned Principals
+MATCH p = (b1)-[:MemberOf*1..]->(:Group)-[r]->(b2)
+WHERE r.isacl = true
+  AND 'owned' IN split(b1.system_tags, ' ')
+RETURN p
+
+// Find Dangerous Rights for Groups under Domain Users
+MATCH p = (g:Group)-[:MemberOf*1..]->(:Group)-[:Owns|WriteDacl|GenericAll|WriteOwner|ExecuteDCOM|GenericWrite|AllowedToDelegate|ForceChangePassword]->(b)
+WHERE g.objectid ENDS WITH '-S-1-5-11'
+   OR g.objectid ENDS WITH '-S-1-5-32-554'
+   OR g.objectid ENDS WITH '-S-1-1-0'
+   OR g.objectid ENDS WITH '-513'
+   OR g.objectid ENDS WITH '-S-1-5-32-545'
+RETURN p
+
+// Find dMSA Accounts Controlled by Non-Tier 0
+MATCH p = (d:Computer)<-[:WriteDacl|Owns|GenericAll|GenericWrite|WriteOwner]-(n:Base)
+WHERE d.`msds-delegatedmsastate` IS NOT NULL
+  AND (NOT 'admin_tier_0' IN split(n.system_tags, ' ') OR n.system_tags IS NULL)
+RETURN p
+
+// Find All CAs
+MATCH p = (:Domain)-[:Contains*1..]->(:EnterpriseCA)
+RETURN p
+
+// Find All Certificate Templates
+MATCH p = (:Domain)-[:Contains*1..]->(n:CertTemplate)
+RETURN p
+
+// Find All Published Templates
+MATCH p = (ct:CertTemplate)-[:PublishedTo]->(:EnterpriseCA)
+RETURN p
+
+// Find ESC1/3/4/14 not from Tier-0
+MATCH p = (b)-[:ADCSESC1|ADCSESC3|ADCSESC4|ADCSESC13]->()
+WHERE NOT 'admin_tier_0' IN split(b.system_tags, ' ')
+   OR b.system_tags IS NULL
+RETURN p
+
+// Find ESC15 (EKUwu)
+MATCH p = (:Base)-[:Enroll|AllExtendedRights]->(ct:CertTemplate)-[:PublishedTo]->(:EnterpriseCA)-[:TrustedForNTAuth]->(:NTAuthStore)-[:NTAuthStoreFor]->(:Domain)
+WHERE ct.enrolleesuppliessubject = True
+  AND ct.authenticationenabled = False
+  AND ct.requiresmanagerapproval = False
+  AND ct.schemaversion = 1
+RETURN p
+
+// Find Shortest Paths to Domain (including Computers)
+MATCH p = allShortestPaths((b)-[*1..]->(:Domain))
+WHERE (b:User OR b:Computer)
+RETURN p
+
+// Find Shortest Paths to no LAPS
+MATCH p = allShortestPaths((b)-[*1..]->(c:Computer))
+WHERE b <> c
+  AND (b:User OR b:Computer)
+  AND c.haslaps = false
+RETURN p
+
+// Find Shortest Paths from Owned Principals (including everything)
+MATCH p = allShortestPaths((u:User)-[*1..]->(b))
+WHERE u <> b
+  AND 'owned' IN split(u.system_tags, ' ')
+RETURN p
+
+// Find Shortest Paths from Owned Principals to Domain
+MATCH p = allShortestPaths((b)-[*1..]->(:Domain))
+WHERE 'owned' IN split(b.system_tags, ' ')
+RETURN p
+
+// Find Shortest Paths from Owned Principals to High Value Targets
+MATCH p = allShortestPaths((b1)-[*1..]->(b2))
+WHERE 'owned' IN split(b1.system_tags, ' ')
+  AND 'admin_tier_0' IN split(b2.system_tags, ' ')
+RETURN p
+
+// Find Shortest Paths from Owned Principals to no LAPS
+MATCH p = allShortestPaths((b)-[*1..]->(c:Computer))
+WHERE b <> c
+  AND 'owned' IN split(b.system_tags, ' ')
+  AND c.haslaps = false
+RETURN p
+
+// Find Shortest Paths from Domain Users and Domain Computers (including everything)
+MATCH p = allShortestPaths((g:Group)-[*1..]->(b))
+WHERE g <> b
+  AND (g.objectid =~ '(?i).*S-1-5-.*-513' OR g.objectid =~ '(?i).*S-1-5-.*-515')
+RETURN p
+
+// Find Shortest Paths from no Signing to Domain
+MATCH p = allShortestPaths((c:Computer)-[*1..]->(:Domain))
+WHERE 'hasnosmbsigning' IN split(c.user_tags, ' ')
+RETURN p
+
+// Find Shortest Paths from no Signing to High Value Targets
+MATCH p = allShortestPaths((c:Computer)-[*1..]->(b))
+WHERE c <> b
+  AND 'hasnosmbsigning' IN split(c.user_tags, ' ')
+  AND 'admin_tier_0' IN split(b.system_tags, ' ')
+RETURN p
+
+// Find Shortest Paths from WebClientService Clients to Tier 0
+MATCH p = allShortestPaths((c:Computer)-[*1..]->(b2))
+WHERE 'admin_tier_0' IN split(b2.system_tags, ' ')
+  AND c.webclientrunning = True
+RETURN p
+
+// Find Computers with Foreign Domain Group Membership
+MATCH p = (n:Computer)-[r:MemberOf]->(m:Group)
+WHERE NOT n.domain = m.domain
+RETURN p
+
+// Find Users with Foreign Domain Group Membership
+MATCH p = (n:User)-[r:MemberOf]->(m:Group)
+WHERE NOT n.domain = m.domain
+RETURN p
+
+// Find All Permissions for Domain Users Groups
+MATCH p = (m:Group)-[r:Owns|WriteDacl|GenericAll|WriteOwner|ExecuteDCOM|GenericWrite|AllowedToDelegate|ForceChangePassword]->(n:Computer)
+WHERE m.objectid ENDS WITH '-513'
+RETURN p
+
+// Find Workstations where Domain Users have Admin Rights
+MATCH p = (g:Group)-[r:AdminTo]->(c:Computer)
+WHERE g.objectid ENDS WITH '-513'
+  AND NOT c.operatingsystem CONTAINS 'Server'
+RETURN p
+
+// Find Servers where Domain Users have Admin Rights
+MATCH p = (g:Group)-[r:AdminTo]->(c:Computer)
+WHERE g.objectid ENDS WITH '-513'
+  AND c.operatingsystem CONTAINS 'Server'
+RETURN p
+
+// Find Dangerous Rights for Everyone Group
+MATCH p = (m:Group)-[r:Owns|WriteDacl|GenericAll|WriteOwner|ExecuteDCOM|GenericWrite|AllowedToDelegate|ForceChangePassword]->(n)
+WHERE m.objectid = 'S-1-1-0'
+RETURN p
+
+// Find Dangerous Rights for Authenticated Users
+MATCH p = (m:Group)-[r:Owns|WriteDacl|GenericAll|WriteOwner|ExecuteDCOM|GenericWrite|AllowedToDelegate|ForceChangePassword]->(n)
+WHERE m.objectid = 'S-1-5-11'
+RETURN p
+
+// Find Computers with Constrained Delegation to Domain Controllers
+MATCH p = (c:Computer)-[:AllowedToDelegate]->(dc:Computer)
+WHERE c.allowedtodelegate IS NOT NULL
+  AND dc.isdc = true
+RETURN p
+
+// Find Computers allowed to delegate to DCs
+MATCH p = (c1:Computer)-[:AllowedToDelegate]->(c2:Computer)
+WHERE c2.isdc = TRUE
+RETURN p
+
+// Find Groups with RDP privileges
+MATCH p = (g:Group)-[:CanRDP]->(c:Computer)
+RETURN p
+
+// Find Computer Group Memberships
+MATCH p = (c:Computer)-[:MemberOf*1..]->(g:Group)
+RETURN p
+
+// Find Computers where Domain Admins are Logged In
+MATCH p = (c:Computer)-[:HasSession]->(u:User)-[:MemberOf*1..]->(g:Group)
+WHERE g.objectid =~ '(?i).*-512'
+RETURN p
+
+// Find Computers where Domain Admins have Sessions
+MATCH p = (c:Computer)-[:HasSession]->(n:User)-[:MemberOf*1..]->(g:Group)
+WHERE g.name =~ '(?i).*DOMAIN ADMINS.*'
+RETURN p
+
+// Find who can READ LAPS passwords
+MATCH p = (n)-[:MemberOf*0..]->()-[:AllExtendedRights|ReadLAPSPassword]->(m:Computer)
+RETURN p
+
+// Find who can READ GMSA passwords
+MATCH p = (n)-[:ReadGMSAPassword]->(m)
+RETURN p
+
+// Find users with DCSync privileges
+MATCH p = (n1)-[:MemberOf|GetChanges*1..]->(u:Domain)
+WITH p, n1
+MATCH p2 = (n1)-[:MemberOf|GetChangesAll*1..]->(u:Domain)
+RETURN p, p2
+
+// Find Computers where Domain Admins have Admin Rights
+MATCH p = (g:Group)-[:AdminTo]->(c:Computer)
+WHERE g.objectid =~ '(?i).*-512'
+RETURN p
+
+// Find groups with permission to reset passwords
+MATCH p = (g:Group)-[r:ForceChangePassword]->(n:User)
+RETURN p
+
+// Find Users with Constrained Delegation to Domain Controllers
+MATCH p = (u:User)-[:AllowedToDelegate]->(dc:Computer)
+WHERE u.allowedtodelegate IS NOT NULL
+  AND dc.isdc = true
+RETURN p
+
+// Find GenericAll/GenericWrite privileges held by owned principals
+MATCH p = (u)-[r:GenericAll|GenericWrite]->(n)
+WHERE u.owned = true
+RETURN p
+
+// Find all Users with SIDHistory set
+MATCH (u:User)
+WHERE u.sidhistory IS NOT NULL
+RETURN u
+
+// Find Kerberos Delegation
+MATCH p = (u)-[:AllowedToDelegate]->(c)
+RETURN p
+
+// Find principals that can AddAllowedToAct
+MATCH p = (n)-[r:AddAllowedToAct]->(c:Computer)
+RETURN p
+
+// Find members of Domain Admins
+MATCH p = (t:Group)<-[:MemberOf*1..]-(a)
+WHERE (a:User OR a:Computer)
+  AND t.objectid ENDS WITH '-512'
+RETURN p
+LIMIT 1000
